@@ -1,9 +1,14 @@
-# Redmine - project management software
+# Copyright for portions of project Redmine - project management software are held by
 # Copyright (C) 2006-2016  Jean-Philippe Lang
+# License GNU General Publice License v2
+# -----------------------------------------
+# Additional changes are:
+# Copyright (C) 2016 Timon Eckert
+# License GNU General Publice License v3
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
+# as published by the Free Software Foundation; either version 3
 # of the License, or (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
@@ -19,6 +24,7 @@ desc 'Mantis migration script'
 
 require 'active_record'
 require 'pp'
+require 'time'
 
 namespace :redmine do
 task :migrate_from_mantis => :environment do
@@ -135,7 +141,7 @@ task :migrate_from_mantis => :environment do
     end
 
     class MantisCategory < ActiveRecord::Base
-      self.table_name = :mantis_project_category_table
+      self.table_name = :mantis_category_table
     end
 
     class MantisProjectUser < ActiveRecord::Base
@@ -212,7 +218,7 @@ task :migrate_from_mantis => :environment do
 
     class MantisCustomField < ActiveRecord::Base
       self.table_name = :mantis_custom_field_table
-      set_inheritance_column :none
+      self.inheritance_column = nil
       has_many :values, :class_name => "MantisCustomFieldString", :foreign_key => :field_id
       has_many :projects, :class_name => "MantisCustomFieldProject", :foreign_key => :field_id
 
@@ -285,7 +291,7 @@ task :migrate_from_mantis => :environment do
         project.versions.each do |version|
           v = Version.new :name => encode(version.version),
                           :description => encode(version.description),
-                          :effective_date => (version.date_order ? version.date_order.to_date : nil)
+                          :effective_date => (version.date_order ? Time.at(version.date_order).to_datetime : nil)
           v.project = p
           v.save
           versions_map[version.id] = v.id
@@ -293,10 +299,10 @@ task :migrate_from_mantis => :environment do
 
         # Project categories
         project.categories.each do |category|
-          g = IssueCategory.new :name => category.category[0,30]
+          g = IssueCategory.new :name => category.name
           g.project = p
           g.save
-          categories_map[category.category] = g.id
+          categories_map[category.name] = g.id
         end
       end
       puts
@@ -315,7 +321,7 @@ task :migrate_from_mantis => :environment do
                       :created_on => bug.date_submitted,
                       :updated_on => bug.last_updated
         i.author = User.find_by_id(users_map[bug.reporter_id])
-        i.category = IssueCategory.find_by_project_id_and_name(i.project_id, bug.category[0,30]) unless bug.category.blank?
+        i.category = IssueCategory.find_by_project_id_and_name(i.project_id, bug.category_id) unless bug.category_id.blank?
         i.fixed_version = Version.find_by_project_id_and_name(i.project_id, bug.fixed_in_version) unless bug.fixed_in_version.blank?
         i.tracker = (bug.severity == 10 ? TRACKER_FEATURE : TRACKER_BUG)
         i.status = STATUS_MAPPING[bug.status] || i.status
