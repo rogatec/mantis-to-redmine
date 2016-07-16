@@ -272,6 +272,9 @@ namespace :redmine do
         versions_map = {}
         categories_map = {}
         MantisProject.all.each do |project|
+          # special case for testing - remove later!
+          next unless encode(project.name).include? 'Heimerer'
+
           p = Project.new :name => encode(project.name),
                           :description => encode(project.description),
                           :is_public => project_visibility == "private" ? false : true
@@ -306,7 +309,7 @@ namespace :redmine do
             g = IssueCategory.new :name => category.name
             g.project = p
             g.save
-            categories_map[category.name] = g.id
+            categories_map[category.id] = category.name
           end
         end
         puts
@@ -324,7 +327,7 @@ namespace :redmine do
                         :created_on => Time.at(bug.date_submitted).utc,
                         :updated_on => Time.at(bug.last_updated).utc
           i.author = User.find_by_id(users_map[bug.reporter_id])
-          i.category = IssueCategory.find_by_project_id_and_name(i.project_id, bug.category_id) unless bug.category_id.blank?
+          i.category = IssueCategory.find_by_project_id_and_name(i.project_id, categories_map[bug.category_id]) unless categories_map[bug.category_id].blank?
           i.fixed_version = Version.find_by_project_id_and_name(i.project_id, bug.fixed_in_version) unless bug.fixed_in_version.blank?
           i.tracker = (bug.severity == 10 ? TRACKER_FEATURE : TRACKER_BUG)
           i.status = STATUS_MAPPING[bug.status] || i.status
