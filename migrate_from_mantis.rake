@@ -262,13 +262,19 @@ namespace :redmine do
         puts
 
         # Projects
+        project_visibility = "private"
+        print "How would you like your projects visibility? private|public [#{project_visibility}]: "
+        visibility_input = STDIN.gets.chomp!
+        project_visibility = visibility_input unless visibility_input.blank?
+
         print "Migrating projects"
         projects_map = {}
         versions_map = {}
         categories_map = {}
         MantisProject.all.each do |project|
           p = Project.new :name => encode(project.name),
-                          :description => encode(project.description)
+                          :description => encode(project.description),
+                          :is_public => project_visibility == "private" ? false : true
           p.identifier = project.identifier
           next unless p.save
           projects_map[project.id] = p.id
