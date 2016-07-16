@@ -321,8 +321,8 @@ namespace :redmine do
                         :subject => encode(bug.summary),
                         :description => encode(bug.bug_text.full_description),
                         :priority => PRIORITY_MAPPING[bug.priority] || DEFAULT_PRIORITY,
-                        :created_on => bug.date_submitted,
-                        :updated_on => bug.last_updated
+                        :created_on => Time.at(bug.date_submitted).utc,
+                        :updated_on => Time.at(bug.last_updated).utc
           i.author = User.find_by_id(users_map[bug.reporter_id])
           i.category = IssueCategory.find_by_project_id_and_name(i.project_id, bug.category_id) unless bug.category_id.blank?
           i.fixed_version = Version.find_by_project_id_and_name(i.project_id, bug.fixed_in_version) unless bug.fixed_in_version.blank?
