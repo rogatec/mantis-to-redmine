@@ -243,7 +243,6 @@ namespace :redmine do
 
         # Users
         print "Migrating users"
-        User.delete_all "login <> 'admin'"
         users_map = {}
         users_migrated = 0
         MantisUser.all.each do |user|
@@ -264,7 +263,6 @@ namespace :redmine do
 
         # Projects
         print "Migrating projects"
-        Project.destroy_all
         projects_map = {}
         versions_map = {}
         categories_map = {}
@@ -309,7 +307,6 @@ namespace :redmine do
 
         # Bugs
         print "Migrating bugs"
-        Issue.destroy_all
         issues_map = {}
         keep_bug_ids = (Issue.count == 0)
         MantisBug.find_each(:batch_size => 200) do |bug|
@@ -383,7 +380,6 @@ namespace :redmine do
 
         # News
         print "Migrating news"
-        News.destroy_all
         MantisNews.where('project_id > 0').all.each do |news|
           next unless projects_map[news.project_id]
           n = News.new :project_id => projects_map[news.project_id],
@@ -399,7 +395,6 @@ namespace :redmine do
 
         # Custom fields
         print "Migrating custom fields"
-        IssueCustomField.destroy_all
         MantisCustomField.all.each do |field|
           f = IssueCustomField.new :name => field.name[0..29],
                                    :field_format => CUSTOM_FIELD_TYPE_MAPPING[field.format],
@@ -444,6 +439,41 @@ namespace :redmine do
         puts "Custom fields:   #{IssueCustomField.count}/#{MantisCustomField.count}"
       end
 
+      def self.clear_database
+        # get admin user
+        admin_user = "admin"
+        print "What's your default admin login [#{admin_user}]: "
+        given_admin_user = STDIN.gets.chomp!
+        admin_user = given_admin_user unless given_admin_user.blank?
+        user_admin = User.find_by_login(admin_user)
+
+        abort("given admin user does not exist - check your database") unless user_admin.instance_of? User
+
+        puts
+        print "Removing all users except your given admin user"
+        puts
+        EmailAddress.delete_all "user_id <> #{user_admin.id}"
+        User.delete_all "login <> 'admin'"
+        Group.destroy_all
+        Token.destroy_all "user_id <> #{user_admin.id}"
+        UserPreference.destroy_all "user_id <> #{user_admin.id}"
+
+        print "Removing all relations of existing projects"
+        Issue.destroy_all
+        IssueCategory.destroy_all
+        News.destroy_all
+        IssueCustomField.destroy_all
+        Project.destroy_all
+        MemberRole.destroy_all
+        EnabledModule.destroy_all
+        Repository.destroy_all
+        Version.destroy_all
+        Wiki.destroy_all
+        puts
+        print "Removed all existing projects"
+        puts
+      end
+
       def self.encoding(charset)
         @charset = charset
       end
@@ -474,6 +504,9 @@ namespace :redmine do
     print "Are you sure you want to continue ? [y/N] "
     STDOUT.flush
     break unless STDIN.gets.match(/^y$/i)
+
+    # empty current database installation
+    MantisMigrate.clear_database
 
     # Default Mantis database settings
     db_params = {:adapter => 'mysql2',
