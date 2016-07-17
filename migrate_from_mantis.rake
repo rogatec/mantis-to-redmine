@@ -134,6 +134,10 @@ namespace :redmine do
         end
       end
 
+      class MantisProjectHierarchy < ActiveRecord::Base
+        self.table_name = :mantis_project_hierarchy_table
+      end
+
       class MantisVersion < ActiveRecord::Base
         self.table_name = :mantis_project_version_table
 
@@ -322,6 +326,15 @@ namespace :redmine do
           end
         end
         puts
+
+        # Project hierarchies
+        MantisProjectHierarchy.all.each do |hierarchy|
+          if projects_map.has_key?(hierarchy.parent_id) && projects_map.has_key?(hierarchy.child_id)
+            p = Project.find_by_id(projects_map[hierarchy.child_id])
+            p.parent_id = projects_map[hierarchy.parent_id]
+            next unless p.save
+          end
+        end
 
         # Bugs
         print "Migrating bugs"
