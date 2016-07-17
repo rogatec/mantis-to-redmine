@@ -56,6 +56,11 @@ namespace :redmine do
                           60 => priorities[5]  # immediate
       }
 
+      IS_PUBLIC = {
+          10 => true,
+          50 => false
+      }
+
       TRACKER_BUG = Tracker.find_by_position(1)
       TRACKER_FEATURE = Tracker.find_by_position(2)
 
@@ -263,10 +268,15 @@ namespace :redmine do
         puts
 
         # Projects
-        project_visibility = "private"
-        print "How would you like your projects visibility? private|public [#{project_visibility}]: "
+        project_visibility = ''
+        print "How would you like your projects visibility? private|public or press enter for mantis setting: "
         visibility_input = STDIN.gets.chomp!
         project_visibility = visibility_input unless visibility_input.blank?
+        if project_visibility == 'private'
+          project_visibility = false
+        elsif project_visibility == 'public'
+          project_visibility = true
+        end
 
         print "Migrating projects"
         projects_map = {}
@@ -276,9 +286,12 @@ namespace :redmine do
           # special case for testing - remove later!
           next unless encode(project.name).include? 'Heimerer'
 
+          # use mantis setting if input was empty
+          project_visibility = IS_PUBLIC[project.view_state] if visibility_input == ''
+
           p = Project.new :name => encode(project.name),
                           :description => encode(project.description),
-                          :is_public => project_visibility == "private" ? false : true
+                          :is_public => project_visibility
           p.identifier = project.identifier
           next unless p.save
           projects_map[project.id] = p.id
