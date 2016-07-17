@@ -33,16 +33,17 @@ namespace :redmine do
 
       new_status = IssueStatus.find_by_position(1)
       assigned_status = IssueStatus.find_by_position(2)
-      resolved_status = IssueStatus.find_by_position(3)
       feedback_status = IssueStatus.find_by_position(4)
-      closed_status = IssueStatus.where(:is_closed => true).first
+      @done_status = IssueStatus.find_by_position(5) # default is resolved - marked as closed
+      rejected_status = IssueStatus.find_by_position(6) # default is rejected - marked as closed
+
       STATUS_MAPPING = {10 => new_status,      # new
                         20 => feedback_status, # feedback
                         30 => new_status,      # acknowledged
                         40 => new_status,      # confirmed
                         50 => assigned_status, # assigned
-                        80 => resolved_status, # resolved
-                        90 => closed_status    # closed
+                        80 => @done_status,    # done/closed/done_ratio:100
+                        90 => rejected_status  # rejected/closed
       }
 
       priorities = IssuePriority.all
@@ -320,6 +321,7 @@ namespace :redmine do
         keep_bug_ids = (Issue.count == 0)
         MantisBug.find_each(:batch_size => 200) do |bug|
           next unless projects_map[bug.project_id] && users_map[bug.reporter_id]
+
           i = Issue.new :project_id => projects_map[bug.project_id],
                         :subject => encode(bug.summary),
                         :description => encode(bug.bug_text.full_description),
@@ -331,6 +333,7 @@ namespace :redmine do
           i.fixed_version = Version.find_by_project_id_and_name(i.project_id, bug.fixed_in_version) unless bug.fixed_in_version.blank?
           i.tracker = (bug.severity == 10 ? TRACKER_FEATURE : TRACKER_BUG)
           i.status = STATUS_MAPPING[bug.status] || i.status
+          i.done_ratio = 100 unless STATUS_MAPPING[bug.status] != @done_status
           i.id = bug.id if keep_bug_ids
           next unless i.save
           issues_map[bug.id] = i.id
