@@ -280,7 +280,6 @@ namespace :redmine do
 
         print "Migrating projects"
         projects_map = {}
-        versions_map = {}
         categories_map = {}
         MantisProject.all.each do |project|
           # special case for testing - remove later!
@@ -312,10 +311,9 @@ namespace :redmine do
           project.versions.each do |version|
             v = Version.new :name => encode(version.version),
                             :description => encode(version.description),
-                            :effective_date => (version.date_order ? Time.at(version.date_order).to_datetime : nil)
+                            :effective_date => version.date_order ? Time.at(version.date_order).to_datetime : nil
             v.project = p
             v.save
-            versions_map[version.id] = v.id
           end
 
           # Project categories
@@ -343,7 +341,7 @@ namespace :redmine do
                         :updated_on => Time.at(bug.last_updated).utc
           i.author = User.find_by_id(users_map[bug.reporter_id])
           i.category = IssueCategory.find_by_project_id_and_name(i.project_id, categories_map[bug.category_id]) unless categories_map[bug.category_id].blank?
-          i.fixed_version = Version.find_by_project_id_and_name(i.project_id, bug.fixed_in_version) unless bug.fixed_in_version.blank?
+          i.fixed_version = Version.find_by_project_id_and_name(i.project_id, bug.target_version) unless bug.target_version.blank?
           i.tracker = (bug.severity == 10 ? TRACKER_FEATURE : TRACKER_BUG)
           i.status = STATUS_MAPPING[bug.status] || i.status
           i.done_ratio = 100 unless STATUS_MAPPING[bug.status] != @done_status
