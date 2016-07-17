@@ -282,9 +282,6 @@ namespace :redmine do
         projects_map = {}
         categories_map = {}
         MantisProject.all.each do |project|
-          # special case for testing - remove later!
-          next unless encode(project.name).include? 'Heimerer'
-
           # use mantis setting if input was empty
           project_visibility = IS_PUBLIC[project.view_state] if visibility_input == ''
 
