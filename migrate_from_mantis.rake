@@ -496,7 +496,7 @@ namespace :redmine do
         IssueCategory.destroy_all
         News.destroy_all
         IssueCustomField.destroy_all
-        Project.destroy_all
+        Project.delete_all
         MemberRole.destroy_all
         EnabledModule.destroy_all
         Repository.destroy_all
